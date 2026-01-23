@@ -1,0 +1,31 @@
+
+generator client {
+  provider = "prisma-client-js"
+  // previewFeatures = ["driverAdapters"]  <-- DELETE THIS LINE
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Deck {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  userId      String   
+  cards       Card[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Card {
+  id        String   @id @default(cuid())
+  front     String
+  back      String
+  deckId    String
+  orderIndex Int      @default(0)
+  deck      Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
