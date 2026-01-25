@@ -17,6 +17,7 @@ model Deck {
   cards       Card[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  tags        DeckTag[]
 }
 
 model Card {
@@ -25,7 +26,32 @@ model Card {
   back      String
   deckId    String
   orderIndex Int      @default(0)
+  status     String   @default("neutral")
+  tags       Tag[]
   deck      Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   // Stores hex code like "#ff0000"
+  userId    String
+  cards     Card[]
+  createdAt DateTime @default(now())
+
+  // Ensures a user can't have two tags named "Important"
+  @@unique([userId, name])
+}
+
+model DeckTag {
+  id        String   @id @default(cuid())
+  name      String
+  color     String
+  userId    String
+  decks     Deck[]
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name])
 }
