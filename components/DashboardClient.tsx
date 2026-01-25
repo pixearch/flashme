@@ -99,9 +99,16 @@ export default function DashboardClient({ decks, allDeckTags, allCardTags }: Das
     <div className="container mx-auto p-10 space-y-8">
       
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h1 className="text-3xl font-bold">My Decks</h1>
-        <CreateDeckForm />
+	<div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+  	  <h1 className="text-3xl font-bold">My Decks</h1>
+  
+  	{/* Buttons Wrapper */}
+  	<div className="flex gap-2">
+    	  <Link href="/dashboard/import">
+      	    <Button variant="outline">Import / Merge</Button>
+    	  </Link>
+    	  <CreateDeckForm />
+	</div>
       </div>
 
       {/* FILTER BAR */}

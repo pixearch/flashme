@@ -263,3 +263,68 @@ export async function deleteDeckTag(tagId: string) {
 
   revalidatePath('/dashboard');
 }
+
+// --- IMPORT / MERGE ACTIONS ---
+
+export async function mergeDecks(sourceDeckIds: string[], targetDeckId: string) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  // 1. Fetch all cards from source decks
+  const sourceCards = await prisma.card.findMany({
+    where: {
+      deckId: { in: sourceDeckIds },
+      deck: { userId } // Security check
+    },
+    include: { tags: true }
+  });
+
+  if (sourceCards.length === 0) return { count: 0 };
+
+  // 2. Get current card count in target to set correct orderIndex
+  const targetCount = await prisma.card.count({ where: { deckId: targetDeckId } });
+
+  // 3. Create copies of all cards
+  // Note: Prisma createMany doesn't support relations (tags), so we map loop or use a transaction.
+  // For data integrity with tags, a transaction loop is safest.
+
+  await prisma.$transaction(
+    sourceCards.map((card, index) =>
+      prisma.card.create({
+        data: {
+          front: card.front,
+          back: card.back,
+          deckId: targetDeckId,
+          orderIndex: targetCount + index,
+          tags: {
+            connect: card.tags.map(t => ({ id: t.id })) // Connect to same tags
+          }
+        }
+      })
+    )
+  );
+
+  revalidatePath('/dashboard');
+  revalidatePath(`/dashboard/deck/${targetDeckId}`);
+
+  return { count: sourceCards.length };
+}
+
+export async function createDeckFromMerge(sourceDeckIds: string[], title: string, description: string) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  // 1. Create the new deck
+  const newDeck = await prisma.deck.create({
+    data: {
+      title,
+      description,
+      userId
+    }
+  });
+
+  // 2. Reuse the merge logic to fill it
+  await mergeDecks(sourceDeckIds, newDeck.id);
+
+  return newDeck;
+}
