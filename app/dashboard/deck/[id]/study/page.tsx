@@ -1,36 +1,33 @@
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/db";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import StudySession from "@/components/StudySession";
+import { getStudySession } from "@/app/actions";
+import StudyController from "@/components/StudyController"; // <--- Wrapper Component
 
-export default async function StudyPage({ params }: { params: { id: string } }) {
+export default async function StudyPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { userId } = await auth();
   if (!userId) return <div>Please sign in</div>;
 
-  const { id } = await params;
-
+  // 1. Fetch Deck & Cards
   const deck = await prisma.deck.findUnique({
-    where: { id, userId },
+    where: { id: params.id, userId },
     include: { 
       cards: {
-        orderBy: { orderIndex: 'asc' }
+        include: { tags: true }
       }
     }
   });
 
   if (!deck) return <div>Deck not found</div>;
 
-  return (
-    <div className="max-w-4xl mx-auto p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">{deck.title}: Study Mode</h1>
-        <Link href={`/dashboard/deck/${id}`}>
-          <Button variant="ghost">Exit Study</Button>
-        </Link>
-      </div>
+  // 2. Fetch Active Session (Bookmark)
+  const session = await getStudySession(deck.id);
 
-      <StudySession cards={deck.cards} />
-    </div>
+  // 3. Render the Controller (Client Component)
+  return (
+    <StudyController 
+      deck={deck} 
+      initialSession={session} 
+    />
   );
 }

@@ -328,3 +328,125 @@ export async function createDeckFromMerge(sourceDeckIds: string[], title: string
 
   return newDeck;
 }
+
+// --- STUDY SESSION (BOOKMARKING) ---
+
+export async function saveStudySession(
+  deckId: string,
+  currentIndex: number,
+  mode: string,
+  cardIds: string[]
+) {
+  const { userId } = await auth();
+  if (!userId) return;
+
+  // Upsert: Create if new, Update if exists
+  await prisma.studySession.upsert({
+    where: { userId_deckId: { userId, deckId } },
+    update: {
+      currentIndex,
+      mode,
+      cardOrder: JSON.stringify(cardIds),
+    },
+    create: {
+      userId,
+      deckId,
+      currentIndex,
+      mode,
+      cardOrder: JSON.stringify(cardIds),
+    }
+  });
+}
+
+export async function getStudySession(deckId: string) {
+  const { userId } = await auth();
+  if (!userId) return null;
+
+  const session = await prisma.studySession.findUnique({
+    where: { userId_deckId: { userId, deckId } }
+  });
+
+  if (!session) return null;
+
+  // Parse the JSON string back into an array
+  return {
+    ...session,
+    cardOrder: JSON.parse(session.cardOrder) as string[]
+  };
+}
+
+export async function deleteStudySession(deckId: string) {
+  const { userId } = await auth();
+  if (!userId) return;
+
+  try {
+    await prisma.studySession.delete({
+      where: { userId_deckId: { userId, deckId } }
+    });
+  } catch (e) {
+    // Ignore if already deleted
+  }
+}
+
+// --- BULK TAGGING ---
+
+export async function bulkAddTags(
+  tagId: string,
+  updates: { cardId: string; removeTagId?: string }[]
+) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  // Verify the tag belongs to the user
+  const tag = await prisma.tag.findFirst({
+    where: { id: tagId, userId },
+  });
+  if (!tag) throw new Error("Tag not found");
+
+  // Execute all updates in a single transaction for safety
+  await prisma.$transaction(
+    updates.map((update) => {
+      const operations: any = {
+        connect: { id: tagId },
+      };
+
+      // If we need to make room, disconnect the old tag
+      if (update.removeTagId) {
+        operations.disconnect = { id: update.removeTagId };
+      }
+
+      return prisma.card.update({
+        where: { id: update.cardId, deck: { userId } },
+        data: {
+          tags: operations,
+        },
+      });
+    })
+  );
+
+  revalidatePath('/dashboard');
+  return { success: true };
+}
+
+export async function bulkRemoveTags(tagId: string, cardIds: string[]) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  // Execute all updates in a transaction
+  await prisma.$transaction(
+    cardIds.map((id) =>
+      prisma.card.update({
+        where: { id, deck: { userId } },
+        data: {
+          tags: {
+            disconnect: { id: tagId } // Removes the tag
+          }
+        },
+      })
+    )
+  );
+
+  revalidatePath('/dashboard');
+  return { success: true };
+}
+

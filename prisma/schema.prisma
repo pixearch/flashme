@@ -55,3 +55,15 @@ model DeckTag {
 
   @@unique([userId, name])
 }
+
+model StudySession {
+  id           String   @id @default(cuid())
+  userId       String
+  deckId       String
+  currentIndex Int      @default(0)
+  mode         String   // 'standard', 'shuffle', 'weak', etc.
+  cardOrder    String   // JSON string of card IDs (preserves shuffle order)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, deckId]) // One active session per deck
+}
