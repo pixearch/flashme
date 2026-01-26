@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Check, ArrowLeft, ArrowRight, RotateCw } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -15,18 +15,56 @@ interface StudySessionClientProps {
   initialIndex?: number
 }
 
+// --- MC HELPER ---
+function parseMcCard(content: string) {
+    if (!content.startsWith(';;MC;;')) return null
+    try {
+        return JSON.parse(content.replace(';;MC;;', ''))
+    } catch (e) {
+        return null
+    }
+}
+
 export default function StudySessionClient({ cards, deckId, initialIndex = 0 }: StudySessionClientProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [isFlipped, setIsFlipped] = useState(false)
   const [isFinished, setIsFinished] = useState(false)
   
-  // Transition State: We toggle this to '0s' when switching cards to prevent seeing the answer
+  // Transition State
   const [transitionDuration, setTransitionDuration] = useState('0.6s')
 
-  // Local status override (so the border updates instantly when you click)
+  // Local status override
   const [tempStatus, setTempStatus] = useState<string | null>(null)
 
   const currentCard = cards[currentIndex]
+
+  // --- DYNAMIC MC SHUFFLING ---
+  // We need to shuffle options *once* per card view and keep them consistent between front/back
+  // Memoize based on currentCard.id to reshuffle when card changes
+  const mcData = useMemo(() => {
+    if (!currentCard) return null
+    const parsed = parseMcCard(currentCard.front)
+    if (!parsed) return null
+
+    // Create array of indices [0, 1, 2...]
+    const indices = parsed.o.map((_: any, i: number) => i)
+    // Shuffle indices
+    const shuffledIndices = [...indices].sort(() => Math.random() - 0.5)
+    
+    return {
+        question: parsed.q,
+        options: parsed.o,
+        correctIndices: parsed.a,
+        shuffledOrder: shuffledIndices // Store the randomized order [2, 0, 1]
+    }
+  }, [currentCard?.id]) 
+  // Note: Using currentCard.id ensures it reshuffles when we switch cards, meeting the "shuffle on visit" requirement.
+
+  // Reset temp status when changing cards
+  useEffect(() => {
+    setTempStatus(null)
+    setIsFlipped(false)
+  }, [currentIndex])
 
   // --- AUTOSAVE ---
   useEffect(() => {
@@ -43,38 +81,24 @@ export default function StudySessionClient({ cards, deckId, initialIndex = 0 }: 
   const handleFlip = () => setIsFlipped(!isFlipped)
 
   const handleNext = () => {
-    // 1. Snap to Front Instantly (Disable Animation)
     setTransitionDuration('0s')
     setIsFlipped(false)
     setTempStatus(null)
-
-    // 2. Change Data
     if (currentIndex < cards.length - 1) {
       setCurrentIndex(prev => prev + 1)
     } else {
       finishSession()
     }
-
-    // 3. Re-enable Animation (small delay allows the render to complete with 0s)
-    setTimeout(() => {
-      setTransitionDuration('0.6s')
-    }, 50)
+    setTimeout(() => { setTransitionDuration('0.6s') }, 50)
   }
 
   const handlePrev = () => {
     if (currentIndex > 0) {
-      // 1. Snap to Front Instantly
       setTransitionDuration('0s')
       setIsFlipped(false)
       setTempStatus(null)
-
-      // 2. Change Data
       setCurrentIndex(prev => prev - 1)
-
-      // 3. Re-enable Animation
-      setTimeout(() => {
-        setTransitionDuration('0.6s')
-      }, 50)
+      setTimeout(() => { setTransitionDuration('0.6s') }, 50)
     }
   }
 
@@ -83,7 +107,6 @@ export default function StudySessionClient({ cards, deckId, initialIndex = 0 }: 
         setTempStatus(status)
         currentCard.status = status 
         await updateCardStatus(currentCard.id, status)
-        // Note: We DO NOT auto-advance here anymore, as requested.
     }
   }
 
@@ -130,6 +153,46 @@ export default function StudySessionClient({ cards, deckId, initialIndex = 0 }: 
 
   const activeStatus = getActiveStatus()
 
+  // --- RENDER CONTENT (Handle Text vs MC) ---
+  const renderCardContent = (side: 'front' | 'back') => {
+    if (mcData) {
+        // MULTIPLE CHOICE RENDER
+        return (
+            <div className="text-left w-full max-w-md mx-auto space-y-6">
+                <h3 className="text-2xl font-medium text-center mb-6">{mcData.question}</h3>
+                <div className="space-y-3">
+                    {mcData.shuffledOrder.map((originalIndex: number, displayIndex: number) => {
+                        const optionText = mcData.options[originalIndex]
+                        const isCorrect = mcData.correctIndices.includes(originalIndex)
+                        
+                        // BACK logic: Highlight correct answers
+                        let optionStyle = "bg-white border-slate-200 text-slate-700"
+                        if (side === 'back') {
+                             if (isCorrect) optionStyle = "bg-green-100 border-green-500 text-green-900 font-bold ring-1 ring-green-500"
+                             // We don't highlight wrong answers red because the user didn't "select" one interactively, 
+                             // we just show the correct ones as requested.
+                        }
+
+                        return (
+                            <div key={originalIndex} className={`flex items-start gap-3 p-3 rounded-lg border ${optionStyle} transition-all`}>
+                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold uppercase text-slate-500 mt-0.5">
+                                    {String.fromCharCode(65 + displayIndex)}
+                                </div>
+                                <span className="text-sm leading-relaxed">{optionText}</span>
+                                {side === 'back' && isCorrect && <Check className="w-4 h-4 text-green-600 ml-auto" />}
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+        )
+    } else {
+        // STANDARD TEXT RENDER
+        const text = side === 'front' ? currentCard.front : currentCard.back
+        return <h3 className="text-3xl font-medium whitespace-pre-wrap">{text}</h3>
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
       
@@ -156,7 +219,7 @@ export default function StudySessionClient({ cards, deckId, initialIndex = 0 }: 
 
       {/* THE CARD */}
       <div 
-        className="group cursor-pointer w-full h-[400px]" 
+        className="group cursor-pointer w-full min-h-[400px]" 
         onClick={handleFlip} 
         style={{ perspective: '1000px' }}
       >
@@ -164,10 +227,10 @@ export default function StudySessionClient({ cards, deckId, initialIndex = 0 }: 
             style={{ 
                 position: 'relative',
                 width: '100%',
-                height: '100%',
+                minHeight: '400px', // Ensure height for content
                 transformStyle: 'preserve-3d',
                 transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                transition: `transform ${transitionDuration}`, // <--- DYNAMIC DURATION
+                transition: `transform ${transitionDuration}`,
             }}
         >
             
@@ -181,9 +244,9 @@ export default function StudySessionClient({ cards, deckId, initialIndex = 0 }: 
                         <Badge key={t.id} style={{ backgroundColor: t.color }} className="text-[10px]">#{t.name}</Badge>
                     ))}
                 </div>
-                <CardContent className="text-center">
-                    <h3 className="text-3xl font-medium">{currentCard.front}</h3>
-                    <p className="absolute bottom-6 text-sm text-slate-400 font-medium uppercase tracking-widest">Front</p>
+                <CardContent className="text-center w-full">
+                    {renderCardContent('front')}
+                    <p className="absolute bottom-6 left-0 right-0 text-center text-sm text-slate-400 font-medium uppercase tracking-widest">Front</p>
                 </CardContent>
             </Card>
 
@@ -201,16 +264,16 @@ export default function StudySessionClient({ cards, deckId, initialIndex = 0 }: 
                         <Badge key={t.id} style={{ backgroundColor: t.color }} className="text-[10px]">#{t.name}</Badge>
                     ))}
                 </div>
-                <CardContent className="text-center">
-                    <h3 className="text-3xl font-medium text-slate-800 whitespace-pre-wrap">{currentCard.back}</h3>
-                    <p className="absolute bottom-6 text-sm text-slate-400 font-medium uppercase tracking-widest">Back</p>
+                <CardContent className="text-center w-full">
+                    {renderCardContent('back')}
+                    <p className="absolute bottom-6 left-0 right-0 text-center text-sm text-slate-400 font-medium uppercase tracking-widest">Back</p>
                 </CardContent>
             </Card>
         </div>
       </div>
 
       {/* CONTROLS */}
-      <div className="flex flex-col gap-6 items-center">
+      <div className="flex flex-col gap-6 items-center mt-6">
         <Button onClick={handleFlip} variant="ghost" className="gap-2 text-slate-500">
             <RotateCw className="w-4 h-4" /> Click card or Spacebar to flip
         </Button>

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from "next/link"
-import { Search, Filter, X, Check, ArrowLeft, Plus, Trash2, AlertTriangle } from 'lucide-react'
+import { Search, Filter, X, Check, ArrowLeft, Plus, Trash2, AlertTriangle, List } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -29,6 +29,7 @@ import EditCardDialog from "@/components/EditCardDialog"
 import { bulkAddTags, bulkRemoveTags } from "@/app/actions"
 import { toast } from "sonner" 
 
+// ... [Existing Interfaces] ...
 interface Tag {
   id: string
   name: string
@@ -41,7 +42,7 @@ interface CardData {
   back: string
   orderIndex: number
   tags: Tag[]
-  status?: string | null // Added Status
+  status?: string | null 
 }
 
 interface DeckData {
@@ -57,27 +58,47 @@ interface DeckPageClientProps {
   allTags: Tag[]
 }
 
+// Helper to format preview text
+function getCardPreview(text: string) {
+    if (text.startsWith(';;MC;;')) {
+        try {
+            const parsed = JSON.parse(text.replace(';;MC;;', ''))
+            return parsed.q
+        } catch {
+            return "Multiple Choice Question"
+        }
+    }
+    return text
+}
+
+// Helper to check if MC
+function isMc(text: string) {
+    return text.startsWith(';;MC;;')
+}
+
 export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
+  // ... [Existing State] ...
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [matchMode, setMatchMode] = useState<'OR' | 'AND'>('OR')
 
-  // --- SELECTION STATE ---
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([])
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null)
   
-  // --- BULK TAG STATE ---
   const [conflictDialogOpen, setConflictDialogOpen] = useState(false)
   const [pendingTagId, setPendingTagId] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<{ card: CardData, resolveTagId: string | null }[]>([])
   const [safeUpdates, setSafeUpdates] = useState<{ cardId: string }[]>([])
 
-  // --- FILTER LOGIC ---
+  // ... [Existing Filter Logic - Update to use getCardPreview] ...
   const filteredCards = useMemo(() => {
     return deck.cards.filter(card => {
       const lowerQuery = searchQuery.toLowerCase()
-      const matchesSearch = card.front.toLowerCase().includes(lowerQuery) ||
-                            card.back.toLowerCase().includes(lowerQuery) ||
+      const frontText = getCardPreview(card.front).toLowerCase()
+      const backText = getCardPreview(card.back).toLowerCase() // Back matches front usually for MC
+      
+      const matchesSearch = frontText.includes(lowerQuery) ||
+                            backText.includes(lowerQuery) ||
                             card.tags.some(tag => tag.name.toLowerCase().includes(lowerQuery))
 
       let matchesTags = true
@@ -94,7 +115,7 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
     })
   }, [deck.cards, searchQuery, selectedTagIds, matchMode])
 
-  // --- SELECTION HANDLERS ---
+  // ... [Existing Handlers: handleSelect, handleSelectAll, initiateBulkAdd, executeBulkAdd, handleResolveConflict, handleBulkRemove] ...
   const handleSelect = (id: string, index: number, isSelecting: boolean, shiftKey: boolean) => {
     if (shiftKey && lastSelectedId && isSelecting) {
         const lastIndex = filteredCards.findIndex(c => c.id === lastSelectedId)
@@ -128,7 +149,6 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
     }
   }
 
-  // --- BULK ADD LOGIC ---
   const initiateBulkAdd = (tagId: string) => {
     const selectedCards = deck.cards.filter(c => selectedCardIds.includes(c.id))
     const safe: { cardId: string }[] = []
@@ -172,7 +192,7 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
   const handleResolveConflict = () => {
     const unresolved = conflicts.find(c => !c.resolveTagId)
     if (unresolved) {
-        alert(`Please select a tag to replace for card: "${unresolved.card.front.substring(0, 20)}..."`)
+        alert(`Please select a tag to replace for card: "${getCardPreview(unresolved.card.front).substring(0, 20)}..."`)
         return
     }
     if (!pendingTagId) return
@@ -184,7 +204,6 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
     executeBulkAdd(pendingTagId, allUpdates)
   }
 
-  // --- BULK REMOVE LOGIC ---
   const handleBulkRemove = async (tagId: string) => {
     try {
         await bulkRemoveTags(tagId, selectedCardIds)
@@ -195,7 +214,6 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
     }
   }
 
-  // --- RENDER HELPERS ---
   const toggleTag = (id: string) => {
     setSelectedTagIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
   }
@@ -206,23 +224,18 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
     setMatchMode('OR')
   }
 
-  // Helper for Status Border Colors
   const getCardStyle = (status: string | null | undefined, isSelected: boolean) => {
-    // 1. Base Border Color (Confidence)
-    let borderClass = "border-slate-200 bg-white" // Default
+    let borderClass = "border-slate-200 bg-white" 
     if (status === 'learning') borderClass = "border-red-400 bg-red-50/20"
     if (status === 'reviewing') borderClass = "border-yellow-400 bg-yellow-50/20"
     if (status === 'mastered') borderClass = "border-green-400 bg-green-50/20"
-
-    // 2. Selection Ring (Blue Outer Glow)
-    // We use ring-offset so the status border is still visible inside the blue selection ring
     const selectionClass = isSelected 
         ? "ring-2 ring-blue-600 ring-offset-2 z-10" 
-        : "hover:shadow-md hover:border-blue-300" // Hover effect if not selected
-
+        : "hover:shadow-md hover:border-blue-300"
     return `border-2 ${borderClass} ${selectionClass}`
   }
 
+  // --- RENDER ---
   return (
     <div className="container mx-auto p-10 space-y-8 pb-32">
       
@@ -254,19 +267,17 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
         </div>
       </div>
 
+      {/* CARD FORM - No changes needed here, it handles itself */}
       <CardForm deckId={deck.id} />
 
-      {/* FILTER & BULK BAR */}
+      {/* FILTER & BULK BAR (Copy from previous turn, just ensuring imports are same) */}
       <div className="sticky top-4 z-20 flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-lg border shadow-sm transition-all min-h-[72px]">
-        
-        {/* LEFT SIDE: SELECTION OR SEARCH */}
+        {/* ... [Same Filter UI Code] ... */}
         {selectedCardIds.length > 0 ? (
             <div className="flex flex-wrap items-center gap-4 w-full animate-in fade-in slide-in-from-left-5">
                 <div className="bg-slate-900 text-white px-3 py-1 rounded text-sm font-medium">
                     {selectedCardIds.length} Selected
                 </div>
-                
-                {/* BULK ADD */}
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button variant="outline" className="border-dashed bg-green-50 hover:bg-green-100 border-green-200 text-green-700">
@@ -277,11 +288,7 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
                         <div className="p-2 border-b text-xs font-bold text-slate-500 uppercase">Add Tag</div>
                         <div className="max-h-60 overflow-auto p-1">
                             {allTags.map(tag => (
-                                <div 
-                                    key={tag.id} 
-                                    className="flex items-center gap-2 p-2 hover:bg-slate-100 rounded cursor-pointer text-sm"
-                                    onClick={() => initiateBulkAdd(tag.id)}
-                                >
+                                <div key={tag.id} className="flex items-center gap-2 p-2 hover:bg-slate-100 rounded cursor-pointer text-sm" onClick={() => initiateBulkAdd(tag.id)}>
                                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
                                     {tag.name}
                                 </div>
@@ -289,8 +296,6 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
                         </div>
                     </PopoverContent>
                 </Popover>
-
-                {/* BULK REMOVE */}
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button variant="outline" className="border-dashed bg-red-50 hover:bg-red-100 border-red-200 text-red-700">
@@ -301,11 +306,7 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
                         <div className="p-2 border-b text-xs font-bold text-slate-500 uppercase">Remove Tag</div>
                         <div className="max-h-60 overflow-auto p-1">
                             {allTags.map(tag => (
-                                <div 
-                                    key={tag.id} 
-                                    className="flex items-center gap-2 p-2 hover:bg-slate-100 rounded cursor-pointer text-sm"
-                                    onClick={() => handleBulkRemove(tag.id)}
-                                >
+                                <div key={tag.id} className="flex items-center gap-2 p-2 hover:bg-slate-100 rounded cursor-pointer text-sm" onClick={() => handleBulkRemove(tag.id)}>
                                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
                                     {tag.name}
                                 </div>
@@ -313,97 +314,76 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
                         </div>
                     </PopoverContent>
                 </Popover>
-
                 <div className="flex-1" />
-                <Button variant="ghost" size="sm" onClick={() => setSelectedCardIds([])}>
-                    Cancel
-                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedCardIds([])}>Cancel</Button>
             </div>
         ) : (
             <>
                 <div className="relative w-full md:w-96">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <Input 
-                    placeholder="Search cards..." 
-                    className="pl-9" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                />
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input placeholder="Search cards..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                 </div>
-
                 <Popover>
-                <PopoverTrigger asChild>
-                    <Button variant="outline" className="border-dashed w-full md:w-auto">
-                    <Filter className="mr-2 h-4 w-4" />
-                    Filter Tags
-                    {selectedTagIds.length > 0 && (
-                        <Badge variant="secondary" className="ml-2 rounded-sm px-1 font-normal">
-                        {selectedTagIds.length}
-                        </Badge>
-                    )}
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[260px] p-0" align="start">
-                    <div className="p-2 border-b text-xs font-medium text-slate-500 uppercase flex justify-between items-center">
-                        <span>Filter Cards</span>
-                        <div className="flex bg-slate-100 rounded p-0.5">
-                            <button onClick={() => setMatchMode('OR')} className={`text-[10px] px-2 py-0.5 rounded ${matchMode === 'OR' ? 'bg-white shadow text-black' : 'text-slate-500'}`}>Any</button>
-                            <button onClick={() => setMatchMode('AND')} className={`text-[10px] px-2 py-0.5 rounded ${matchMode === 'AND' ? 'bg-white shadow text-black' : 'text-slate-500'}`}>All</button>
-                        </div>
-                    </div>
-                    <div className="p-2 space-y-1 max-h-60 overflow-auto">
-                        {allTags.map(tag => (
-                            <div key={tag.id} className="flex items-center space-x-2 p-2 rounded hover:bg-slate-100 cursor-pointer" onClick={() => toggleTag(tag.id)}>
-                                <div className={`flex items-center justify-center w-4 h-4 rounded border ${selectedTagIds.includes(tag.id) ? 'bg-black border-black text-white' : 'border-slate-300'}`}>
-                                    {selectedTagIds.includes(tag.id) && <Check className="h-3 w-3" />}
-                                </div>
-                                <span className="text-sm flex-1">{tag.name}</span>
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" className="border-dashed w-full md:w-auto">
+                            <Filter className="mr-2 h-4 w-4" /> Filter Tags
+                            {selectedTagIds.length > 0 && <Badge variant="secondary" className="ml-2 rounded-sm px-1 font-normal">{selectedTagIds.length}</Badge>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[260px] p-0" align="start">
+                        {/* ... [Tag Filter Content] ... */}
+                        <div className="p-2 border-b text-xs font-medium text-slate-500 uppercase flex justify-between items-center">
+                            <span>Filter Cards</span>
+                            <div className="flex bg-slate-100 rounded p-0.5">
+                                <button onClick={() => setMatchMode('OR')} className={`text-[10px] px-2 py-0.5 rounded ${matchMode === 'OR' ? 'bg-white shadow text-black' : 'text-slate-500'}`}>Any</button>
+                                <button onClick={() => setMatchMode('AND')} className={`text-[10px] px-2 py-0.5 rounded ${matchMode === 'AND' ? 'bg-white shadow text-black' : 'text-slate-500'}`}>All</button>
                             </div>
-                        ))}
-                    </div>
-                    {selectedTagIds.length > 0 && (
-                        <div className="p-2 border-t">
-                            <Button variant="ghost" size="sm" className="w-full justify-center text-xs" onClick={() => setSelectedTagIds([])}>Clear</Button>
                         </div>
-                    )}
-                </PopoverContent>
+                        <div className="p-2 space-y-1 max-h-60 overflow-auto">
+                            {allTags.map(tag => (
+                                <div key={tag.id} className="flex items-center space-x-2 p-2 rounded hover:bg-slate-100 cursor-pointer" onClick={() => toggleTag(tag.id)}>
+                                    <div className={`flex items-center justify-center w-4 h-4 rounded border ${selectedTagIds.includes(tag.id) ? 'bg-black border-black text-white' : 'border-slate-300'}`}>
+                                        {selectedTagIds.includes(tag.id) && <Check className="h-3 w-3" />}
+                                    </div>
+                                    <span className="text-sm flex-1">{tag.name}</span>
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                                </div>
+                            ))}
+                        </div>
+                        {selectedTagIds.length > 0 && <div className="p-2 border-t"><Button variant="ghost" size="sm" className="w-full justify-center text-xs" onClick={() => setSelectedTagIds([])}>Clear</Button></div>}
+                    </PopoverContent>
                 </Popover>
-
-                {(searchQuery || selectedTagIds.length > 0) && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters} className="text-red-500 hover:bg-red-50">
-                        Reset <X className="ml-2 h-4 w-4" />
-                    </Button>
-                )}
-                
+                {(searchQuery || selectedTagIds.length > 0) && <Button variant="ghost" size="sm" onClick={clearFilters} className="text-red-500 hover:bg-red-50">Reset <X className="ml-2 h-4 w-4" /></Button>}
                 <div className="flex-1" />
-                <Button variant="ghost" size="sm" onClick={handleSelectAll}>
-                    {selectedCardIds.length === filteredCards.length ? "Deselect All" : "Select All Visible"}
-                </Button>
+                <Button variant="ghost" size="sm" onClick={handleSelectAll}>{selectedCardIds.length === filteredCards.length ? "Deselect All" : "Select All Visible"}</Button>
             </>
         )}
       </div>
 
-      {/* CARD GRID */}
+      {/* CARD GRID - Update to use getCardPreview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredCards.map((card, index) => {
           const isSelected = selectedCardIds.includes(card.id)
+          const isMultipleChoice = isMc(card.front)
+          
           return (
             <Card 
                 key={card.id} 
                 className={`relative group cursor-pointer transition-all duration-200 select-none ${getCardStyle(card.status, isSelected)}`}
                 onClick={(e) => {
-                   // Full card select logic
                    handleSelect(card.id, index, !isSelected, e.shiftKey)
                 }}
             >
-              {/* EDIT PENCIL - Protected */}
+              {/* EDIT PENCIL */}
               <div onClick={(e) => e.stopPropagation()}>
                  <EditCardDialog card={card} />
               </div>
 
               <CardHeader className="pb-2 flex flex-row justify-between items-start space-y-0">
-                <CardTitle className="text-sm font-bold text-slate-400">Card {card.orderIndex + 1}</CardTitle>
+                <CardTitle className="text-sm font-bold text-slate-400 flex items-center gap-2">
+                    Card {card.orderIndex + 1}
+                    {isMultipleChoice && <List className="w-3 h-3 text-blue-500" title="Multiple Choice" />}
+                </CardTitle>
                 <div className="flex gap-1 flex-wrap justify-end max-w-[70%] pr-6">
                   {card.tags.map(tag => (
                      <span key={tag.id} className="text-[10px] px-1.5 py-0.5 rounded text-white font-medium shadow-sm" style={{ backgroundColor: tag.color }}>
@@ -413,65 +393,50 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="font-medium text-lg mb-4 whitespace-pre-wrap">{card.front}</p>
+                <p className="font-medium text-lg mb-4 whitespace-pre-wrap">{getCardPreview(card.front)}</p>
                 <div className="h-px bg-slate-100 my-4"/>
-                <p className="text-slate-600 whitespace-pre-wrap">{card.back}</p>
+                <p className="text-slate-600 whitespace-pre-wrap">
+                    {/* For MC cards, we just show "Multiple Choice (See Details)" or similar if you want, or render the raw question again since the answer is embedded */}
+                    {isMultipleChoice ? <span className="text-xs italic text-slate-400">Answer hidden in preview</span> : getCardPreview(card.back)}
+                </p>
               </CardContent>
             </Card>
           )
         })}
       </div>
 
-      {/* CONFLICT DIALOG */}
+      {/* CONFLICT DIALOG (Same as before) */}
       <Dialog open={conflictDialogOpen} onOpenChange={setConflictDialogOpen}>
+         {/* ... [Dialog Content - Same as previous] ... */}
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-amber-600">
-                    <AlertTriangle className="h-5 w-5" />
-                    Tag Limit Reached
-                </DialogTitle>
-                <DialogDescription>
-                    Some selected cards already have 3 tags. Select which tag to replace.
-                </DialogDescription>
+                <DialogTitle className="flex items-center gap-2 text-amber-600"><AlertTriangle className="h-5 w-5" /> Tag Limit Reached</DialogTitle>
+                <DialogDescription>Some selected cards already have 3 tags. Select which tag to replace.</DialogDescription>
             </DialogHeader>
-
             <div className="space-y-4 py-4">
                 {conflicts.map((conflict, idx) => (
                     <div key={conflict.card.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-3 bg-slate-50 rounded border">
                         <div className="flex-1">
-                            <div className="font-medium text-sm text-slate-700">Card {conflict.card.orderIndex + 1}: "{conflict.card.front.substring(0, 40)}{conflict.card.front.length > 40 && '...'}"</div>
+                            <div className="font-medium text-sm text-slate-700">Card {conflict.card.orderIndex + 1}: "{getCardPreview(conflict.card.front).substring(0, 40)}..."</div>
                             <div className="flex gap-2 mt-2">
-                                {conflict.card.tags.map(t => (
-                                    <Badge key={t.id} variant="outline" className="text-[10px] bg-white">
-                                        {t.name}
-                                    </Badge>
-                                ))}
+                                {conflict.card.tags.map(t => <Badge key={t.id} variant="outline" className="text-[10px] bg-white">{t.name}</Badge>)}
                             </div>
                         </div>
                         <div className="w-full sm:w-48">
-                            <Select 
-                                onValueChange={(val) => {
+                            <Select onValueChange={(val) => {
                                     const newConflicts = [...conflicts]
                                     newConflicts[idx].resolveTagId = val
                                     setConflicts(newConflicts)
-                                }}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Replace which?" />
-                                </SelectTrigger>
+                                }}>
+                                <SelectTrigger><SelectValue placeholder="Replace which?" /></SelectTrigger>
                                 <SelectContent>
-                                    {conflict.card.tags.map(t => (
-                                        <SelectItem key={t.id} value={t.id}>
-                                            Replace {t.name}
-                                        </SelectItem>
-                                    ))}
+                                    {conflict.card.tags.map(t => <SelectItem key={t.id} value={t.id}>Replace {t.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
                 ))}
             </div>
-
             <DialogFooter>
                 <Button variant="outline" onClick={() => setConflictDialogOpen(false)}>Cancel</Button>
                 <Button onClick={handleResolveConflict}>Confirm & Update</Button>
