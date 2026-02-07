@@ -1,7 +1,5 @@
-
 generator client {
   provider = "prisma-client-js"
-  // previewFeatures = ["driverAdapters"]  <-- DELETE THIS LINE
 }
 
 datasource db {
@@ -9,61 +7,95 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- ENUMS ---
+enum Visibility {
+  PRIVATE
+  PUBLIC
+  UNLISTED
+}
+
+enum AccessRole {
+  VIEWER // View Only
+  CLONER // View and Download
+  EDITOR // View, Download, and Edit
+}
+
+// --- MODELS ---
+
+model User {
+  id        String   @id
+  email     String   @unique
+  studySessions StudySession[]
+  // Add other user fields here if needed later
+}
+
 model Deck {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  userId      String   
-  cards       Card[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  tags        DeckTag[]
+  id            String      @id @default(cuid())
+  userId        String
+  title         String
+  description   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  // Sharing Fields
+  visibility    Visibility  @default(PRIVATE)
+  sharePassword String?
+  allowClone    Boolean     @default(true)
+
+  // Relations
+  cards         Card[]
+  tags          Tag[]
+  accessList    DeckAccess[]
+  studySessions StudySession[]
 }
 
 model Card {
-  id        String   @id @default(cuid())
-  front     String
-  back      String
-  deckId    String
-  orderIndex Int      @default(0)
-  status     String   @default("neutral")
-  tags       Tag[]
-  deck      Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  front       String
+  back        String
+  status      String   @default("new")
+  orderIndex  Int      @default(0)
+  
+  deckId      String
+  deck        Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  
+  tags        Tag[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Tag {
-  id        String   @id @default(cuid())
-  name      String
-  color     String   // Stores hex code like "#ff0000"
-  userId    String
-  cards     Card[]
-  createdAt DateTime @default(now())
-
-  // Ensures a user can't have two tags named "Important"
-  @@unique([userId, name])
+  id      String @id @default(cuid())
+  name    String
+  color   String
+  userId  String
+  
+  decks   Deck[]
+  cards   Card[]
 }
 
-model DeckTag {
-  id        String   @id @default(cuid())
-  name      String
-  color     String
-  userId    String
-  decks     Deck[]
-  createdAt DateTime @default(now())
+model DeckAccess {
+  id        String     @id @default(cuid())
+  deckId    String
+  deck      Deck       @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  userEmail String
+  role      AccessRole @default(VIEWER)
+  
+  createdAt DateTime   @default(now())
 
-  @@unique([userId, name])
+  @@unique([deckId, userEmail])
 }
 
 model StudySession {
-  id           String   @id @default(cuid())
-  userId       String
-  deckId       String
-  currentIndex Int      @default(0)
-  mode         String   // 'standard', 'shuffle', 'weak', etc.
-  cardOrder    String   // JSON string of card IDs (preserves shuffle order)
-  updatedAt    DateTime @updatedAt
+  id        String   @id @default(cuid())
+  userId    String
+  deckId    String
+  cardIndex Int      @default(0)
+  updatedAt DateTime @updatedAt
 
-  @@unique([userId, deckId]) // One active session per deck
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deckId])
 }

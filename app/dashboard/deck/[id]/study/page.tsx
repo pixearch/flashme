@@ -1,33 +1,33 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/db";
-import { getStudySession } from "@/app/actions";
-import StudyController from "@/components/StudyController"; // <--- Wrapper Component
+import StudySessionClient from "@/components/StudySessionClient";
+import { notFound } from "next/navigation";
+import { getStudyProgress } from "@/app/actions"; // Import the new action
 
-export default async function StudyPage(props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
+export default async function StudyPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const { userId } = await auth();
+  
   if (!userId) return <div>Please sign in</div>;
 
-  // 1. Fetch Deck & Cards
   const deck = await prisma.deck.findUnique({
-    where: { id: params.id, userId },
-    include: { 
+    where: { id },
+    include: {
       cards: {
-        include: { tags: true }
+        orderBy: { orderIndex: "asc" }
       }
     }
   });
 
-  if (!deck) return <div>Deck not found</div>;
+  if (!deck) return notFound();
 
-  // 2. Fetch Active Session (Bookmark)
-  const session = await getStudySession(deck.id);
+  // Fetch saved progress
+  const savedIndex = await getStudyProgress(id);
 
-  // 3. Render the Controller (Client Component)
   return (
-    <StudyController 
-      deck={deck} 
-      initialSession={session} 
+    <StudySessionClient 
+        deck={deck} 
+        initialIndex={savedIndex} // Pass it to the client
     />
   );
 }

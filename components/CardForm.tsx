@@ -102,7 +102,6 @@ export default function CardForm({ deckId }: CardFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Submitting form...") // Debug Log
     setIsPending(true)
 
     try {
@@ -122,10 +121,6 @@ export default function CardForm({ deckId }: CardFormProps) {
             return
         }
         
-        // Check if at least one correct answer is selected? (Optional, but good UX)
-        // const hasCorrect = mcOptions.some(o => o.isCorrect)
-        // if (!hasCorrect) { toast.error("Select the correct answer"); setIsPending(false); return; }
-
         const payload = {
             q: mcQuestion,
             o: mcOptions.map(opt => opt.text),
@@ -144,7 +139,6 @@ export default function CardForm({ deckId }: CardFormProps) {
         }
       }
 
-      console.log("Sending to server:", { finalFront, finalBack }) // Debug Log
       await createCard(deckId, finalFront, finalBack)
       
       // Reset
@@ -170,7 +164,8 @@ export default function CardForm({ deckId }: CardFormProps) {
          <h2 className="text-xl font-bold">Add New Card</h2>
          <Tabs value={mode} onValueChange={(v) => setMode(v as 'text' | 'mc')} className="w-[300px]">
             <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="text"><Type className="w-4 h-4 mr-2" /> Text</TabsTrigger>
+                {/* RENAMED 'Text' -> 'Single' */}
+                <TabsTrigger value="text"><Type className="w-4 h-4 mr-2" /> Single</TabsTrigger>
                 <TabsTrigger value="mc"><List className="w-4 h-4 mr-2" /> Multi Choice</TabsTrigger>
             </TabsList>
          </Tabs>

@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { Trash2, Loader2 } from 'lucide-react'
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import { useState } from "react"
+import { Trash2 } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,70 +13,64 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
 import { deleteDeck } from "@/app/actions"
 import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 interface DeleteDeckButtonProps {
   deckId: string
+  asMenuItem?: boolean
 }
 
-export default function DeleteDeckButton({ deckId }: DeleteDeckButtonProps) {
-  const [open, setOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
+export default function DeleteDeckButton({ deckId, asMenuItem = true }: DeleteDeckButtonProps) {
+  const [isDeleting, setIsDeleting] = useState(false)
+  const router = useRouter()
 
-  const handleDelete = () => {
-    startTransition(async () => {
-      try {
-        await deleteDeck(deckId)
-        setOpen(false)
-        toast.success("Deck deleted successfully")
-      } catch (error) {
-        toast.error("Failed to delete deck")
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await deleteDeck(deckId)
+      toast.success("Deck deleted")
+      // If we are on the deck page (not dashboard), redirect home
+      if (!asMenuItem) {
+          router.push("/dashboard")
       }
-    })
+    } catch (error) {
+      toast.error("Failed to delete deck")
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog>
       <AlertDialogTrigger asChild>
-        {/* We use onSelect={(e) => e.preventDefault()} to stop the 
-            DropdownMenu from closing immediately when we click "Delete".
-            Instead, we let the AlertDialog take over.
-        */}
-        <DropdownMenuItem 
-            onSelect={(e) => e.preventDefault()} 
-            className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
-        >
-          <Trash2 className="w-4 h-4 mr-2" />
-          Delete Deck
-        </DropdownMenuItem>
+        {asMenuItem ? (
+           // Render as Dropdown Item (For Dashboard)
+           <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600 focus:bg-red-50 gap-2 cursor-pointer">
+              <Trash2 className="w-4 h-4" /> Delete Deck
+           </DropdownMenuItem>
+        ) : (
+           // Render as Regular Button (For Settings Modal)
+           <Button variant="destructive" size="sm" className="gap-2">
+              <Trash2 className="w-4 h-4" /> Delete Deck
+           </Button>
+        )}
       </AlertDialogTrigger>
       
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete this deck and all 
-            the flashcards inside it.
+            This action cannot be undone. This will permanently delete your deck and all its cards.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction 
-            onClick={(e) => {
-                e.preventDefault() // Stop auto-close, let async finish
-                handleDelete()
-            }}
-            disabled={isPending}
-            className="bg-red-600 hover:bg-red-700 text-white"
-          >
-            {isPending ? (
-                <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
-                </>
-            ) : (
-                "Delete Deck"
-            )}
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+            {isDeleting ? "Deleting..." : "Delete"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

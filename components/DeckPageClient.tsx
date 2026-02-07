@@ -27,7 +27,8 @@ import DeckSettings from "@/components/DeckSettings"
 import CardForm from "@/components/CardForm"
 import EditCardDialog from "@/components/EditCardDialog"
 import { bulkAddTags, bulkRemoveTags } from "@/app/actions"
-import { toast } from "sonner" 
+import { toast } from "sonner"
+import ShareDialog from "@/components/ShareDialog"
 
 // ... [Existing Interfaces] ...
 interface Tag {
@@ -258,7 +259,8 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
                     <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
             </Link>
-            <DeckSettings deck={deck} />
+            <DeckSettings deck={deck} allTags={allTags} />
+            <ShareDialog deck={deck as any} />
             {deck.cards.length > 0 && (
                 <Link href={`/dashboard/deck/${deck.id}/study`}>
                     <Button className="bg-green-600 hover:bg-green-700">Study Now</Button>
