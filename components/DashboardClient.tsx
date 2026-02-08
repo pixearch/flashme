@@ -53,6 +53,11 @@ interface DashboardClientProps {
 }
 
 export default function DashboardClient({ decks, currentUserId, currentUserEmail, userTags }: DashboardClientProps) {
+  // FIX: Deduplicate decks to prevent "same key" error if DB returns duplicates
+  const uniqueDecks = decks.filter((deck, index, self) =>
+    index === self.findIndex((d) => d.id === deck.id)
+  );
+
   const [selectedDeckIds, setSelectedDeckIds] = useState<string[]>([])
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   
@@ -63,7 +68,7 @@ export default function DashboardClient({ decks, currentUserId, currentUserEmail
   const router = useRouter()
 
   // --- FILTER LOGIC ---
-  const filteredDecks = decks.filter(deck => {
+  const filteredDecks = uniqueDecks.filter(deck => {
       if (filterTagIds.length === 0) return true;
 
       const deckTagIds = deck.tags.map((t: any) => t.id);
@@ -103,7 +108,7 @@ export default function DashboardClient({ decks, currentUserId, currentUserEmail
   }
 
   // Helper to get full deck objects for the dialog
-  const selectedDecks = decks.filter(d => selectedDeckIds.includes(d.id));
+  const selectedDecks = uniqueDecks.filter(d => selectedDeckIds.includes(d.id));
 
   return (
     <div className="container mx-auto p-10 space-y-8">
@@ -223,7 +228,7 @@ export default function DashboardClient({ decks, currentUserId, currentUserEmail
                 </div>
             ) : (
                 <>
-                    {decks.length > 0 && (
+                    {uniqueDecks.length > 0 && (
                         <Button variant="outline" onClick={() => setIsSelectionMode(true)} className="gap-2">
                             <Settings2 className="w-4 h-4" /> Bulk Manage
                         </Button>
@@ -296,7 +301,7 @@ export default function DashboardClient({ decks, currentUserId, currentUserEmail
                 )}
 
                 <Card className={`group relative flex flex-col overflow-hidden hover:shadow-lg transition-all ${isSelected && isSelectionMode ? 'ring-0' : ''}`}>
-                    
+                   
                     {!isSelectionMode && (
                         <Link href={href} className="absolute inset-0 z-0 focus:outline-none">
                             <span className="sr-only">View Deck</span>
@@ -305,7 +310,7 @@ export default function DashboardClient({ decks, currentUserId, currentUserEmail
 
                     <CardHeader className="pb-2 relative pointer-events-none">
                     <div className="flex justify-between items-start">
-                        
+                       
                         <div className="space-y-1 relative z-10 pointer-events-none block"> 
                             <CardTitle className="line-clamp-1 text-xl flex items-center gap-2">
                                 {deck.title}
@@ -326,7 +331,7 @@ export default function DashboardClient({ decks, currentUserId, currentUserEmail
                                 {deck.description || "No description provided."}
                             </CardDescription>
                         </div>
-                        
+                       
                         <div className="relative z-10 pointer-events-auto pl-2">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
