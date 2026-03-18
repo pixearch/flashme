@@ -44,7 +44,7 @@ export default async function DashboardPage() {
     }
   });
 
-  const sharedDecks = sharedAccess.map(a => a.deck);
+  const sharedDecks = sharedAccess.map((a: any) => a.deck);
 
   // 3. Combine them
   const allDecks = [...decks, ...sharedDecks];

@@ -59,7 +59,7 @@ async function verifyDeckPermission(deckId: string, requiredLevel: 'EDIT' | 'CLO
   }
 
   // 3. Check Shared Access
-  const access = deck.accessList.find(a => a.userEmail === userEmail);
+  const access = deck.accessList.find((a: { userEmail: string }) => a.userEmail === userEmail);
   if (!access) {
     // For VIEWER level, also check if public/unlisted
     if (requiredLevel === 'VIEWER' && (deck.visibility === 'PUBLIC' || deck.visibility === 'UNLISTED')) {
@@ -184,7 +184,7 @@ export async function createDeckFromMerge(deckIds: string[], title: string) {
   }
 
   // Use transaction to ensure atomicity
-  return await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(async (tx: any) => {
     // 2. Create new deck
     const newDeck = await tx.deck.create({
       data: {
@@ -204,7 +204,7 @@ export async function createDeckFromMerge(deckIds: string[], title: string) {
     // 4. Create copies
     if (sourceCards.length > 0) {
         await tx.card.createMany({
-            data: sourceCards.map((c, i) => ({
+            data: sourceCards.map((c: any, i: number) => ({
                 deckId: newDeck.id,
                 front: c.front,
                 back: c.back,
@@ -236,7 +236,7 @@ export async function mergeDecks(targetDeckId: string, sourceDeckIds: string[]) 
   }
 
   // Use transaction to ensure atomicity
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: any) => {
     // Fetch source cards
     const sourceCards = await tx.card.findMany({
         where: { deckId: { in: sourceDeckIds } }
@@ -873,7 +873,7 @@ export async function cloneDeck(deckId: string) {
   }
 
   // Use transaction to ensure atomicity
-  return await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(async (tx: any) => {
     // Create new deck
     const newDeck = await tx.deck.create({
       data: {
@@ -893,7 +893,7 @@ export async function cloneDeck(deckId: string) {
     // Create copies
     if (sourceCards.length > 0) {
       await tx.card.createMany({
-        data: sourceCards.map((c, i) => ({
+        data: sourceCards.map((c: any, i: number) => ({
           deckId: newDeck.id,
           front: c.front,
           back: c.back,
