@@ -252,7 +252,7 @@ export async function mergeDecks(targetDeckId: string, sourceDeckIds: string[]) 
     let startOrder = lastCard ? lastCard.orderIndex + 1 : 0;
 
     await tx.card.createMany({
-        data: sourceCards.map((c, i) => ({
+        data: sourceCards.map((c: any, i: number) => ({
             deckId: targetDeckId,
             front: c.front,
             back: c.back,
