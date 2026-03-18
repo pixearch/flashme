@@ -60,7 +60,14 @@ export default function StudySelectionClient({ deck, onStartSession }: StudySele
   }
 
   const availableTags = Array.from(new Set(deck.cards.flatMap((c: any) => c.tags.map((t: any) => JSON.stringify(t)))))
-    .map((s: any) => JSON.parse(s))
+    .map((s: any) => {
+      try {
+        return JSON.parse(s);
+      } catch {
+        return null;
+      }
+    })
+    .filter((t: any) => t !== null)
 
   return (
     <div className="max-w-2xl mx-auto py-10 space-y-8">
