@@ -59,7 +59,8 @@ async function verifyDeckPermission(deckId: string, requiredLevel: 'EDIT' | 'CLO
   }
 
   // 3. Check Shared Access
-  const access = deck.accessList.find((a: { userEmail: string }) => a.userEmail === userEmail);
+  type DeckAccessItem = { userEmail: string; role?: string; id?: string; deckId?: string; createdAt?: Date };
+  const access = deck.accessList.find((a: DeckAccessItem) => a.userEmail === userEmail);
   if (!access) {
     // For VIEWER level, also check if public/unlisted
     if (requiredLevel === 'VIEWER' && (deck.visibility === 'PUBLIC' || deck.visibility === 'UNLISTED')) {
