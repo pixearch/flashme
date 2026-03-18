@@ -207,7 +207,7 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
 
   const handleBulkRemove = async (tagId: string) => {
     try {
-        await bulkRemoveTags(tagId, selectedCardIds)
+        await bulkRemoveTags(selectedCardIds, tagId)
         setSelectedCardIds([])
         toast.success("Tags removed successfully")
     } catch (err) {

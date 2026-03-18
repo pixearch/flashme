@@ -65,11 +65,11 @@ export default function ImportDecksClient({ decks }: { decks: Deck[] }) {
     try {
       if (mode === 'existing') {
         if (!selectedTargetId) return
-        await mergeDecks(selectedSourceIds, selectedTargetId)
+        await mergeDecks(selectedTargetId, selectedSourceIds)
         router.push(`/dashboard/deck/${selectedTargetId}`)
       } else {
         if (!newDeckTitle) return
-        const newDeck = await createDeckFromMerge(selectedSourceIds, newDeckTitle, newDeckDesc)
+        const newDeck = await createDeckFromMerge(selectedSourceIds, newDeckTitle)
         router.push(`/dashboard/deck/${newDeck.id}`)
       }
     } catch (error) {

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import StudySelectionClient from "@/components/StudySelectionClient"
 import StudySessionClient from "@/components/StudySessionClient"
 import StudyResumeDialog from "@/components/StudyResumeDialog"
-import { deleteStudySession } from "@/app/actions"
+import { clearStudyProgress } from "@/app/actions"
 
 export default function StudyController({ deck, initialSession }: any) {
   // STATE: 'resume-check' | 'selection' | 'active'
@@ -29,7 +29,7 @@ export default function StudyController({ deck, initialSession }: any) {
 
   // 2. Start New Session
   const handleNewSession = async () => {
-    await deleteStudySession(deck.id)
+    await clearStudyProgress(deck.id)
     setViewState('selection')
   }
 
@@ -58,8 +58,7 @@ export default function StudyController({ deck, initialSession }: any) {
   if (viewState === 'active') {
     return (
       <StudySessionClient 
-        cards={activeCards} 
-        deckId={deck.id} 
+        deck={{ ...deck, cards: activeCards }}
         initialIndex={startIndex}
       />
     )

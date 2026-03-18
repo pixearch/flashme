@@ -14,7 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import TagSelector from '@/components/TagSelector'
-import { updateCard, deleteCard } from "@/app/actions"
+import { updateCard, deleteCard, bulkAddTags, bulkRemoveTags } from "@/app/actions"
 
 interface EditCardProps {
   card: {
@@ -45,9 +45,32 @@ export default function EditCardDialog({ card }: EditCardProps) {
 
   const handleUpdate = async () => {
     setIsLoading(true)
-    await updateCard(card.id, front, back, selectedTagIds)
-    setIsLoading(false)
-    setOpen(false)
+    try {
+      await updateCard(card.id, front, back)
+      
+      // Update tags separately
+      const currentTagIds = card.tags.map(t => t.id)
+      const tagsToAdd = selectedTagIds.filter(id => !currentTagIds.includes(id))
+      const tagsToRemove = currentTagIds.filter(id => !selectedTagIds.includes(id))
+      
+      // Add new tags
+      for (const tagId of tagsToAdd) {
+        await bulkAddTags(tagId, [{ cardId: card.id }])
+      }
+      
+      // Remove tags
+      for (const tagId of tagsToRemove) {
+        await bulkRemoveTags([card.id], tagId)
+      }
+      
+      window.location.reload()
+    } catch (error) {
+      console.error(error)
+      alert("Failed to update card")
+    } finally {
+      setIsLoading(false)
+      setOpen(false)
+    }
   }
 
   const handleDelete = async () => {
