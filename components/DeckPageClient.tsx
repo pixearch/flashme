@@ -64,7 +64,7 @@ function getCardPreview(text: string) {
     if (text.startsWith(';;MC;;')) {
         try {
             const parsed = JSON.parse(text.replace(';;MC;;', ''))
-            return parsed.q
+            return parsed?.q || "Multiple Choice Question"
         } catch {
             return "Multiple Choice Question"
         }

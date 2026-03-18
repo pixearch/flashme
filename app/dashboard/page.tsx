@@ -26,8 +26,13 @@ export default async function DashboardPage() {
   });
 
   // 2. Fetch Shared Decks
+  const userEmail = user.emailAddresses?.[0]?.emailAddress;
+  if (!userEmail) {
+    return <div>User email not found</div>;
+  }
+
   const sharedAccess = await prisma.deckAccess.findMany({
-    where: { userEmail: user.emailAddresses[0].emailAddress },
+    where: { userEmail },
     include: {
       deck: {
         include: {
@@ -54,7 +59,7 @@ export default async function DashboardPage() {
     <DashboardClient 
         decks={allDecks} 
         currentUserId={userId} 
-        currentUserEmail={user.emailAddresses[0].emailAddress}
+        currentUserEmail={userEmail}
         userTags={allTags} // Pass tags to client
     />
   );

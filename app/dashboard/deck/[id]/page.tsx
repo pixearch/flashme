@@ -10,7 +10,8 @@ export default async function DeckPage({ params }: { params: Promise<{ id: strin
 
   if (!userId || !user) return <div>Please sign in</div>;
 
-  const email = user.emailAddresses[0].emailAddress;
+  const email = user.emailAddresses?.[0]?.emailAddress;
+  if (!email) return <div>User email not found</div>;
 
   // 1. FETCH DECK
   // Allow access if Owner OR Editor
