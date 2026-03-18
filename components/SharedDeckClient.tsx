@@ -149,4 +149,26 @@ export default function SharedDeckClient({ initialDeck, deckId }: { initialDeck:
                             </div>
                             <div className="h-px bg-slate-200 w-full" />
                             <div className="space-y-1">
-                                <span className="text-xs font-
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Back</span>
+                                <p className="text-slate-600 whitespace-pre-wrap">
+                                    {(() => {
+                                        if (card.back.startsWith(';;MC;;')) {
+                                            try {
+                                                const parsed = JSON.parse(card.back.replace(';;MC;;',''));
+                                                return parsed.q || 'Multiple Choice Question';
+                                            } catch {
+                                                return 'Multiple Choice Question';
+                                            }
+                                        }
+                                        return card.back;
+                                    })()}
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    </div>
+  )
+}
