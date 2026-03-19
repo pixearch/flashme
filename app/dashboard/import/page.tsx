@@ -4,8 +4,13 @@ import ImportDecksClient from "@/components/ImportDecksClient";
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
+import { isClerkConfigured } from "@/lib/clerk-config";
 
 export default async function ImportPage() {
+  if (!isClerkConfigured) {
+    return <div>Authentication is not configured.</div>;
+  }
+
   const { userId } = await auth();
   if (!userId) return <div>Please sign in</div>;
 

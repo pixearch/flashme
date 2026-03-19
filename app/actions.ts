@@ -3,6 +3,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { isClerkConfigured } from "@/lib/clerk-config";
 
 // --- VALIDATION HELPERS ---
 
@@ -774,8 +775,8 @@ export async function getSharedDeck(deckId: string, password?: string) {
   // Check visibility
   if (deck.visibility === 'PRIVATE') {
     // Check if user has access via sharing
-    const { userId } = await auth();
-    const user = await currentUser();
+    const userId = isClerkConfigured ? (await auth()).userId : null;
+    const user = isClerkConfigured ? await currentUser() : null;
     
     if (userId && user) {
       const userEmail = getSafeUserEmail(user);
@@ -806,8 +807,8 @@ export async function getSharedDeck(deckId: string, password?: string) {
   }
 
   // Determine permissions for current user
-  const { userId } = await auth();
-  const user = await currentUser();
+  const userId = isClerkConfigured ? (await auth()).userId : null;
+  const user = isClerkConfigured ? await currentUser() : null;
   let canEdit = false;
   let canClone = false;
 

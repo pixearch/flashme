@@ -3,9 +3,15 @@ import { prisma } from "@/lib/db";
 import StudySessionClient from "@/components/StudySessionClient";
 import { notFound } from "next/navigation";
 import { getStudyProgress } from "@/app/actions"; // Import the new action
+import { isClerkConfigured } from "@/lib/clerk-config";
 
 export default async function StudyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  if (!isClerkConfigured) {
+    return <div>Authentication is not configured.</div>;
+  }
+
   const { userId } = await auth();
   const user = await currentUser();
   

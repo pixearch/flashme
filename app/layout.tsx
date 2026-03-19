@@ -2,7 +2,8 @@ import { ClerkProvider } from '@clerk/nextjs'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
-import Navbar from '@/components/Navbar' // <--- 1. IMPORT THIS
+import Navbar from '@/components/Navbar'
+import { clerkPublishableKey, isClerkConfigured } from '@/lib/clerk-config'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -16,20 +17,23 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  return (
-    <ClerkProvider>
-      <html lang="en">
-        <body className={inter.className}>
-          
-          <Navbar />  {/* <--- 2. ADD THIS HERE */}
-          
-          <main className="min-h-screen bg-slate-50/50">
-            {children}
-          </main>
-          
-          <Toaster />
-        </body>
-      </html>
-    </ClerkProvider>
+  const app = (
+    <html lang="en">
+      <body className={inter.className}>
+        <Navbar clerkEnabled={isClerkConfigured} />
+
+        <main className="min-h-screen bg-slate-50/50">
+          {children}
+        </main>
+
+        <Toaster />
+      </body>
+    </html>
   )
+
+  if (!isClerkConfigured) {
+    return app
+  }
+
+  return <ClerkProvider publishableKey={clerkPublishableKey!}>{app}</ClerkProvider>
 }
