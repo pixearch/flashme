@@ -384,7 +384,11 @@ export default function DeckPageClient({ deck, allTags }: DeckPageClientProps) {
               <CardHeader className="pb-2 flex flex-row justify-between items-start space-y-0">
                 <CardTitle className="text-sm font-bold text-slate-400 flex items-center gap-2">
                     Card {card.orderIndex + 1}
-                    {isMultipleChoice && <List className="w-3 h-3 text-blue-500" title="Multiple Choice" />}
+                    {isMultipleChoice && (
+                      <span className="inline-flex" title="Multiple Choice" aria-label="Multiple Choice">
+                        <List className="w-3 h-3 text-blue-500" aria-hidden="true" />
+                      </span>
+                    )}
                 </CardTitle>
                 <div className="flex gap-1 flex-wrap justify-end max-w-[70%] pr-6">
                   {card.tags.map(tag => (

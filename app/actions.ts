@@ -444,8 +444,9 @@ export async function createTag(name: string, color: string) {
     throw new Error("Invalid color format. Must be a hex color (e.g., #FF0000)");
   }
   
-  await prisma.tag.create({ data: { name: name.trim(), color, userId } });
+  const tag = await prisma.tag.create({ data: { name: name.trim(), color, userId } });
   revalidatePath("/dashboard");
+  return tag;
 }
 
 export async function deleteTag(tagId: string) {
