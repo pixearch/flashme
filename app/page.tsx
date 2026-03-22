@@ -1,16 +1,19 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { auth } from "@clerk/nextjs/server";
+import { isClerkConfigured } from "@/lib/clerk-config";
 
 export default async function Home() {
-  const { userId } = await auth();
+  const userId = isClerkConfigured ? (await auth()).userId : null;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
       <h1 className="text-5xl font-bold mb-6">FlashMaster</h1>
       
       <div className="flex gap-4">
-        {userId ? (
+        {!isClerkConfigured ? (
+            <p className="text-slate-600">Authentication is not configured.</p>
+        ) : userId ? (
             <Link href="/dashboard">
               <Button>Go to Dashboard</Button>
             </Link>

@@ -22,7 +22,7 @@ export default function StudySession({ cards: allCards }: { cards: CardProps[] }
 
   // 1. FILTER LOGIC
   const startSession = (filterType: string) => {
-    let filtered = []
+    let filtered: CardProps[] = []
 
     if (filterType === 'all') {
       filtered = allCards

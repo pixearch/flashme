@@ -7,7 +7,7 @@ import { UserButton, SignedIn, SignedOut, SignInButton } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-export default function Navbar() {
+export default function Navbar({ clerkEnabled }: { clerkEnabled: boolean }) {
   const pathname = usePathname()
 
   const isActive = (path: string) => pathname.startsWith(path)
@@ -48,26 +48,27 @@ export default function Navbar() {
         </div>
 
         {/* RIGHT: Auth & Profile */}
-        <div className="flex items-center gap-4">
-          <SignedOut>
-            {/* Single, clear entry point */}
-            <SignInButton mode="modal">
-              <Button size="sm">Log In</Button>
-            </SignInButton>
-          </SignedOut>
-          
-          <SignedIn>
-            <UserButton 
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  avatarBox: "h-9 w-9",
-                  userButtonPopoverCard: "shadow-xl border border-slate-200"
-                }
-              }}
-            />
-          </SignedIn>
-        </div>
+        {clerkEnabled && (
+          <div className="flex items-center gap-4">
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button size="sm">Log In</Button>
+              </SignInButton>
+            </SignedOut>
+            
+            <SignedIn>
+              <UserButton 
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: {
+                    avatarBox: "h-9 w-9",
+                    userButtonPopoverCard: "shadow-xl border border-slate-200"
+                  }
+                }}
+              />
+            </SignedIn>
+          </div>
+        )}
       </div>
     </header>
   )

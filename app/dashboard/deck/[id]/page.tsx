@@ -2,9 +2,15 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/db";
 import DeckPageClient from "@/components/DeckPageClient";
 import { notFound } from "next/navigation";
+import { isClerkConfigured } from "@/lib/clerk-config";
 
 export default async function DeckPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  if (!isClerkConfigured) {
+    return <div>Authentication is not configured.</div>;
+  }
+
   const { userId } = await auth();
   const user = await currentUser();
 

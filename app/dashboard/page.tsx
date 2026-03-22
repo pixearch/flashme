@@ -2,8 +2,13 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/db";
 import DashboardClient from "@/components/DashboardClient";
 import { redirect } from "next/navigation";
+import { isClerkConfigured } from "@/lib/clerk-config";
 
 export default async function DashboardPage() {
+  if (!isClerkConfigured) {
+    return <div>Authentication is not configured.</div>;
+  }
+
   const { userId } = await auth();
   const user = await currentUser();
 
